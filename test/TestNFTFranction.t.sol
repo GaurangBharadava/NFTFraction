@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
-
-import {Test, console} from 'forge-std/Test.sol';
+import {Test, console} from "forge-std/Test.sol";
 import {DeployTokenDivider} from "../script/DeployNFTFraction.s.sol";
-import {TokenDivider} from 'src/NFTDivider.sol';
-import {ERC721Mock} from './mocks/ERC721Mock.sol';
-import {ERC20Mock} from '@openzeppelin/contracts/mocks/token/ERC20Mock.sol';
-import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
-
+import {TokenDivider} from "src/NFTDivider.sol";
+import {ERC721Mock} from "./mocks/ERC721Mock.sol";
+import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract TokenDiverTest is Test {
     DeployTokenDivider deployer;
@@ -17,22 +15,21 @@ contract TokenDiverTest is Test {
 
     address public USER = makeAddr("user");
     address public USER2 = makeAddr("user2");
-    uint256 constant public STARTING_USER_BALANCE = 10e18;
-    uint256 constant public AMOUNT = 2e18;
-    uint256 constant public TOKEN_ID = 0;
+    uint256 public constant STARTING_USER_BALANCE = 10e18;
+    uint256 public constant AMOUNT = 2e18;
+    uint256 public constant TOKEN_ID = 0;
 
     function setUp() public {
         deployer = new DeployTokenDivider();
         tokenDivider = deployer.run();
-        
+
         erc721Mock = new ERC721Mock();
-        
+
         erc721Mock.mint(USER);
         vm.deal(USER2, STARTING_USER_BALANCE);
     }
 
     function testDivideNft() public {
-        
         vm.startPrank(USER);
         erc721Mock.approve(address(tokenDivider), TOKEN_ID);
 
@@ -44,10 +41,8 @@ contract TokenDiverTest is Test {
         console.log("ERC20 Token symbol is: ", erc20Mock.symbol());
         assertEq(tokenDivider.getErc20TotalMintedAmount(address(erc20Mock)), AMOUNT);
         assertEq(erc721Mock.ownerOf(TOKEN_ID), address(tokenDivider));
-        assertEq(tokenDivider.getBalanceOf(USER,  address(erc20Mock)), AMOUNT);
-
+        assertEq(tokenDivider.getBalanceOf(USER, address(erc20Mock)), AMOUNT);
     }
-
 
     modifier nftDivided() {
         vm.startPrank(USER);
@@ -56,7 +51,6 @@ contract TokenDiverTest is Test {
         vm.stopPrank();
 
         _;
-
     }
 
     function testDivideNftFailsIsSenderIsNotNftOwner() public {
@@ -72,23 +66,21 @@ contract TokenDiverTest is Test {
     function testTransferErcTokensAndClaimNftFailsIfDontHaveAllTheErc20() public nftDivided {
         ERC20Mock erc20Mock = ERC20Mock(tokenDivider.getErc20InfoFromNft(address(erc721Mock)).erc20Address);
         vm.startPrank(USER);
-       // Arrange
+        // Arrange
 
         erc20Mock.approve(address(tokenDivider), AMOUNT);
 
-        
         // Act / Assert
-        tokenDivider.transferErcTokens(address(erc721Mock),USER2, AMOUNT);
-        
+        tokenDivider.transferErcTokens(address(erc721Mock), USER2, AMOUNT);
+
         assertEq(tokenDivider.getBalanceOf(USER2, address(erc20Mock)), AMOUNT);
         assertEq(tokenDivider.getBalanceOf(USER, address(erc20Mock)), 0);
 
         vm.expectRevert(TokenDivider.TokenDivider__NotEnoughErc20Balance.selector);
-        
-        tokenDivider.claimNft(address(erc721Mock));
-        
-        vm.stopPrank();
 
+        tokenDivider.claimNft(address(erc721Mock));
+
+        vm.stopPrank();
     }
 
     function testClaimNft() public nftDivided {
@@ -103,15 +95,14 @@ contract TokenDiverTest is Test {
         assertEq(erc721Mock.ownerOf(TOKEN_ID), USER);
     }
 
-
-    function testSellErc20() public nftDivided{
+    function testSellErc20() public nftDivided {
         ERC20Mock erc20Mock = ERC20Mock(tokenDivider.getErc20InfoFromNft(address(erc721Mock)).erc20Address);
 
         vm.startPrank(USER);
         erc20Mock.approve(address(tokenDivider), AMOUNT);
         tokenDivider.sellErc20(address(erc721Mock), 1e18, AMOUNT);
         vm.stopPrank();
-        
+
         assertEq(tokenDivider.getBalanceOf(USER, address(erc20Mock)), 0);
         assertEq(erc20Mock.balanceOf(address(tokenDivider)), AMOUNT);
     }
@@ -126,13 +117,12 @@ contract TokenDiverTest is Test {
         vm.startPrank(USER);
 
         erc20Mock.approve(address(tokenDivider), AMOUNT);
-    
+
         tokenDivider.sellErc20(address(erc721Mock), AMOUNT, 1e18); // Creamos una orden de venta por 1 ETH
 
         uint256 fees = AMOUNT / 100;
-    
-        vm.stopPrank();
 
+        vm.stopPrank();
 
         vm.prank(USER2);
         tokenDivider.buyOrder{value: (3e18)}(0, USER);
@@ -144,11 +134,10 @@ contract TokenDiverTest is Test {
         assertEq(user2TokenBalanceAfter - 1e18, user2TokenBalanceBefore);
         assertEq(ownerBalanceAfter - fees, ownerBalanceBefore);
 
-        if(block.chainid != 31337) {
+        if (block.chainid != 31337) {
             assertEq(userBalanceAfter - AMOUNT + fees / 2, userBalanceBefore);
         } else {
             assertEq(user2TokenBalanceAfter, 1e18);
-            
         }
     }
 
@@ -186,7 +175,7 @@ contract TokenDiverTest is Test {
 
     function testUserPaysMoreThenPrice() public nftDivided {
         ERC20Mock erc20Mock = ERC20Mock(tokenDivider.getErc20InfoFromNft(address(erc721Mock)).erc20Address);
-        
+
         vm.startPrank(USER);
         erc20Mock.approve(address(tokenDivider), AMOUNT);
         tokenDivider.sellErc20(address(erc721Mock), 200, AMOUNT);
@@ -204,7 +193,7 @@ contract TokenDiverTest is Test {
 
     function testBuyerForceToPayExtraMoney() public nftDivided {
         ERC20Mock erc20Mock = ERC20Mock(tokenDivider.getErc20InfoFromNft(address(erc721Mock)).erc20Address);
-        
+
         vm.startPrank(USER);
         erc20Mock.approve(address(tokenDivider), AMOUNT);
         tokenDivider.sellErc20(address(erc721Mock), 200, AMOUNT);
@@ -216,5 +205,4 @@ contract TokenDiverTest is Test {
         vm.expectRevert(TokenDivider.TokenDivider__InsuficientEtherForFees.selector);
         tokenDivider.buyOrder{value: 200}(0, USER);
     }
-
 }
