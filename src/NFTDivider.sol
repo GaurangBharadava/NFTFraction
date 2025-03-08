@@ -47,7 +47,7 @@ contract TokenDivider is IERC721Receiver, Ownable {
      *
      *  @dev nftToErc20Info Relates an nft with the erc20 pegged, and othe data like the erc20 amount, or the tokenId
      *
-     *  @dev s_userToSellOrders Relates a user with an array of sell orders, that each sell order 
+     *  @dev s_userToSellOrders Relates a user with an array of sell orders, that each sell order
      *  has a seller, an erc20 that is the token to sell, a price and an amount of erc20 to sell
      */
     // @audit-info naming convention of state variable should me presise.
