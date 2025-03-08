@@ -6,6 +6,7 @@ import {HBAR} from "./HBAR.sol";
 import {IERC721, ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {MultiSigWallet} from "../src/Multisig.sol";
 
 /**
  * @title TokenDivider
@@ -57,6 +58,7 @@ contract TokenDivider is IERC721Receiver, Ownable {
     // @audit-info missing netspac
     mapping(address erc20 => address nft) erc20ToNft;
     mapping(address erc20 => uint256 totalErc20Minted) erc20ToMintedAmount;
+    MultiSigWallet wallet;
 
     event NftDivided(address indexed nftAddress, uint256 indexed amountErc20Minted, address indexed erc20Minted);
     event NftClaimed(address indexed nftAddress);
@@ -202,6 +204,7 @@ contract TokenDivider is IERC721Receiver, Ownable {
 
         emit TokensTransfered(amount, tokenInfo.erc20Address);
         // @audit-info return value is ignored
+        wallet = new MultiSigWallet(msg.sender, to);
         IERC20(tokenInfo.erc20Address).transferFrom(msg.sender, to, amount);
     }
 
