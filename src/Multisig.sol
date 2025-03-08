@@ -40,8 +40,6 @@ contract MultiSigWallet {
 
 
     /// @notice Submit a transaction for approval
-    // q to whome the transaction will be sent?
-    // q what if user send transactions to their self?
     function submitTransaction(address _to, uint256 _value) external onlyOwners {
         if (_to == address(0)) revert InvalidRecipient();
         if (_value == 0) revert InvalidAmount();
@@ -78,7 +76,6 @@ contract MultiSigWallet {
 
         txn.executed = true;
 
-        // q what if the transaction fails? due to abcence of fallback function to the to address
         (bool success, ) = payable(txn.to).call{value: txn.value}("");
         require(success, "Transaction failed");
 
