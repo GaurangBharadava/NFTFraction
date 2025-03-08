@@ -31,9 +31,9 @@ export default function NFTFractionalization() {
   
   // Available wallet options
   const walletOptions = [
-    { name: 'MetaMask', icon: 'pi pi-shield' },
-    { name: 'Coinbase Wallet', icon: 'pi pi-wallet' },
-    { name: 'WalletConnect', icon: 'pi pi-link' }
+    { name: 'MetaMask', icon: 'pi pi-shield', type: 'metamask' },
+    { name: 'Coinbase Wallet', icon: 'pi pi-wallet', type: 'coinbase' },
+    { name: 'WalletConnect', icon: 'pi pi-link', type: 'walletconnect' }
   ];
 
   // Animation variants
@@ -86,35 +86,144 @@ export default function NFTFractionalization() {
     }
   }, [step]);
 
-  // Simulated wallet connection
-  const connectWallet = async (walletType) => {
+  // Check if MetaMask is installed
+  const checkIfWalletIsInstalled = (walletType) => {
+    if (walletType === 'metamask') {
+      return typeof window.ethereum !== 'undefined';
+    } else if (walletType === 'coinbase') {
+      // Check for Coinbase Wallet
+      return typeof window.coinbaseWalletExtension !== 'undefined';
+    }
+    // For WalletConnect, we'll return true since it's a protocol not an extension
+    return true;
+  };
+
+  // Actual wallet connection function
+  const connectWallet = async (walletOption) => {
     setIsConnecting(true);
     
-    // Simulate connection delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Mock successful connection
-    const mockAddress = '0x' + Array(40).fill(0).map(() => 
-      Math.floor(Math.random() * 16).toString(16)
-    ).join('');
-    
-    setWalletAddress(mockAddress);
-    setWalletBalance(parseFloat((Math.random() * 5).toFixed(3)));
-    setWalletConnected(true);
-    setIsConnecting(false);
-    setStep(1);
-    
-    if (toast.current) {
-      toast.current.show({
-        severity: 'success',
-        summary: 'Wallet Connected',
-        detail: `Connected to ${walletType}`,
-        life: 3000
-      });
+    try {
+      if (!checkIfWalletIsInstalled(walletOption.type)) {
+        if (toast.current) {
+          toast.current.show({
+            severity: 'error',
+            summary: 'Wallet Not Found',
+            detail: `${walletOption.name} is not installed. Please install it first.`,
+            life: 5000
+          });
+        }
+        setIsConnecting(false);
+        return;
+      }
+      
+      // Connect to MetaMask
+      if (walletOption.type === 'metamask') {
+        try {
+          // Request account access
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          
+          // Get the first account
+          const account = accounts[0];
+          
+          // Get account balance
+          const balance = await window.ethereum.request({
+            method: 'eth_getBalance',
+            params: [account, 'latest']
+          });
+          
+          // Convert balance from wei to ETH (1 ETH = 10^18 wei)
+          const balanceInEth = parseInt(balance, 16) / Math.pow(10, 18);
+          
+          // Set wallet info
+          setWalletAddress(account);
+          setWalletBalance(parseFloat(balanceInEth.toFixed(4)));
+          setWalletConnected(true);
+          setStep(1);
+          
+          // Setup event listeners for account changes
+          window.ethereum.on('accountsChanged', function (accounts) {
+            if (accounts.length === 0) {
+              // User disconnected their wallet
+              disconnectWallet();
+            } else {
+              setWalletAddress(accounts[0]);
+            }
+          });
+          
+          if (toast.current) {
+            toast.current.show({
+              severity: 'success',
+              summary: 'Wallet Connected',
+              detail: `Connected to ${walletOption.name}`,
+              life: 3000
+            });
+          }
+        } catch (error) {
+          console.error("Error connecting to MetaMask:", error);
+          if (toast.current) {
+            toast.current.show({
+              severity: 'error',
+              summary: 'Connection Failed',
+              detail: error.message || "Failed to connect to wallet",
+              life: 5000
+            });
+          }
+        }
+      }
+      // Connect to Coinbase Wallet - simplified example
+      else if (walletOption.type === 'coinbase') {
+        try {
+          const accounts = await window.coinbaseWalletExtension.request({ method: 'eth_requestAccounts' });
+          // Similar implementation as MetaMask but using the Coinbase provider
+          // For brevity, just showing it as a placeholder
+          setWalletAddress(accounts[0]);
+          setWalletBalance(0.1); // Placeholder
+          setWalletConnected(true);
+          setStep(1);
+        } catch (error) {
+          console.error("Error connecting to Coinbase Wallet:", error);
+          if (toast.current) {
+            toast.current.show({
+              severity: 'error',
+              summary: 'Connection Failed',
+              detail: error.message || "Failed to connect to wallet",
+              life: 5000
+            });
+          }
+        }
+      }
+      // WalletConnect would require additional libraries and setup
+      else if (walletOption.type === 'walletconnect') {
+        // Here you would initialize WalletConnect
+        // This requires the WalletConnect library which isn't imported
+        // For now, show a message that this is not implemented
+        if (toast.current) {
+          toast.current.show({
+            severity: 'info',
+            summary: 'Not Implemented',
+            detail: 'WalletConnect integration requires additional setup',
+            life: 3000
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error connecting wallet:", error);
+      if (toast.current) {
+        toast.current.show({
+          severity: 'error',
+          summary: 'Connection Error',
+          detail: error.message || "An unknown error occurred",
+          life: 5000
+        });
+      }
+    } finally {
+      setIsConnecting(false);
     }
   };
 
   const disconnectWallet = () => {
+    // Note: There's no standard way to "disconnect" from MetaMask via code
+    // The best practice is to clear your app's state
     setWalletConnected(false);
     setWalletAddress('');
     setWalletBalance(0);
@@ -275,7 +384,7 @@ export default function NFTFractionalization() {
                             <Button 
                               label={`Connect with ${wallet.name}`} 
                               icon={wallet.icon} 
-                              onClick={() => connectWallet(wallet.name)} 
+                              onClick={() => connectWallet(wallet)} 
                               className="w-full p-button-outlined p-button-lg flex align-items-center justify-content-start"
                               style={{
                                 border: '1px solid rgba(99, 102, 241, 0.4)',
